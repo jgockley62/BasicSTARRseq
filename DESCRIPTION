@@ -1,0 +1,21 @@
+Package: BasicSTARRseq
+Type: Package
+Title: Basic peak calling on STARR-seq data
+Version: 0.99.2
+Date: 2015-01-11
+Author: Annika Buerger
+Maintainer: Annika Buerger <annika.buerger@ukmuenster.de>
+Imports: S4Vectors,methods,IRanges,GenomeInfoDb,stats
+Depends: GenomicRanges,GenomicAlignments
+Description: Basic peak calling on STARR-seq data based on a method
+        introduced in "Genome-Wide Quantitative Enhancer Activity Maps
+        Identified by STARR-seq" Arnold et al. Science. 2013 Mar
+        1;339(6123):1074-7. doi: 10.1126/science. 1232542. Epub 2013
+        Jan 17.
+License: LGPL-3
+LazyData: TRUE
+Suggests: knitr
+VignetteBuilder: knitr
+biocViews: PeakDetection, GeneRegulation, FunctionalPrediction,
+        FunctionalGenomics, Coverage
+NeedsCompilation: no

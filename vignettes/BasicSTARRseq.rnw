@@ -1,0 +1,108 @@
+%\VignetteIndexEntry{A R/Bioconductor package for basic peak calling on STARR-seq data}
+%\VignettePackage{BasicSTARRseq}
+
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper,left=3cm,right=3cm, top=2cm, bottom=2cm}
+\title{BasicSTARRseq: a R/Bioconductor package for basic peak calling on STARR-seq data}
+\author{Annika B\"urger}
+\begin{document}
+\maketitle
+\section{Introduction}
+Transcriptional enhancers in genomic DNA sequences are important for gene regulation. The STARR-seq method was presented by [1] to identify enhancers on large scale. See also [2] for an discussion of that method.
+
+The STARR-seq data consists of two sequencing datasets of the same targets in a specific genome. The \textit{input} sequences show which regions where tested for enhancers. The \textit{STARR-seq} sequences then show significant enriched peaks i.e. a lot more sequences in one region than in the input where enhancers in the genomic DNA are. So the approach pursued in [1] is to call \textit{peak} every region in which there is a lot more (significant in a binomial model) STARR-seq signal than input signal and propose an enhancer at that very same position. Enhancers then are called weak or strong dependent of there degree of enrichment in comparison to input.
+
+\subsection{Loading the package}
+After installation, the package can be loaded into R by typing
+<<>>=
+library(BasicSTARRseq)
+@
+into the R console.
+\subsection{Provided functionality}
+BasicSTARRseq requires the R-packages GenomicAlignments and GenomicRanges.
+
+This package provides the following basic functions for the analysis of STARR-seq data:
+\begin{itemize}
+    \item \texttt{getPeaks}: Performs basic peak calling on STARR-seq data based on a method introduced in [1].
+\end{itemize}
+
+In addition to the examples presented in this vignette, more detailed information on the functions' parameters are presented in the corresponding manual pages.
+
+\section{Data preparation and bioinformatics software}
+The main input format for BasicSTARRseq's main function is the binary alignment / map (BAM) format. Any alignment software can be used to map the raw experimental data to the corresponding reference genome. For example BWA or bowtie. For required filtering steps can then used SAMtools and BEDtools.
+For the analysis of STARR-seq data, two fragment libraries are required. The input library and the STARR-seq library. In comparison of these two the data gets meaningful.
+
+\section{Peak calling in STARR-seq data}
+\subsection{Initialization of a STARRseqData object}
+There are two constructors available for creating a STARRseqData object. After alligning the sequencing data with for example bwa or bowtie one can specify the bam-file names and the type of experiment (i.e. paired-end or single-end), and load the data with the constructor function \texttt{STARRseqData}. Here a small paired-end example dataset\footnote{small extraction of S2 \textit{Drosophila Melanogaster} dataset published in [1], aligned with bowtie}:
+<<>>=
+starrseqFileName <- system.file("extdata", "smallSTARR.bam",
+                                package="BasicSTARRseq")
+inputFileName <- system.file("extdata", "smallInput.bam",
+                             package="BasicSTARRseq")
+STARRseqData(sample=starrseqFileName, control=inputFileName,
+             pairedEnd=TRUE)
+@
+For single-end data, set the argument \texttt{pairedEnd} to \texttt{FALSE}:
+<<>>=
+STARRseqData(sample=starrseqFileName, control=inputFileName,
+             pairedEnd=FALSE)
+@
+If you have already loaded the aligned data into the \texttt{GRanges} format in R, a \texttt{STARRseqData} object can directly be created.
+<<>>=
+starrseqGRanges <- granges(readGAlignmentPairs(starrseqFileName))
+inputGRanges <- granges(readGAlignmentPairs(inputFileName))
+data <- STARRseqData(sample=starrseqGRanges, control=inputGRanges)
+data
+@
+
+\subsection{Peak calling on STARRseqData object}
+Then if you have a valid \texttt{STARRseqData} object, it is possible to call peaks on the data via:
+<<>>=
+peaks <- getPeaks(data)
+peaks
+@
+To further customize the peak calling, there are some arguments you can specify:
+\begin{itemize}
+    \item \texttt{minQuantile} Which quantile of coverage height should be considered as peaks. Default value 0.9.
+    \item \texttt{peakWidth} The width (in base pairs) that the peaks should have. Default value 500.
+    \item \texttt{maxPval} The maximal p-value of peaks that is desired. Default value 0.001.
+    \item \texttt{deduplicate} Wether the sequences should be deduplicated before calling peaks or not. Default value \texttt{TRUE}.
+    \item \texttt{model} Which binomial model should be applied to calculate the p-values. Default value 1.
+\end{itemize}
+The default values are chosen corresponding to [1].
+
+The peak calling works the following way: All genomic positions having a STARR-seq coverage over the quantile \texttt{minQuantile} are considered to be the center of a peak with width \texttt{peakWidth}. If then two ore more peaks overlap, the lower one is discarded. If then the binomial p-Value of the peak is higher than \texttt{maxPval} the peak is discarded as well.
+
+The binomial model 1 for calculating the p-Value is:
+\begin{itemize}
+    \item number of trials = total number of STARR-seq sequences,
+    \item number of successes = STARR-seq coverage,
+    \item estimated sucess probability in each trial = input coverage divided by total number of input sequences.
+\end{itemize}
+
+The binomial model 2 (this is used in [1]) for caculating the p-Value is:
+\begin{itemize}
+    \item number of trials = STARR-seq coverage plus input coverage,
+    \item number of successes = STARR-seq coverage,
+    \item estimated success probability in each trial = total number of STARR-seq sequences divided by the sum of the total number of STARR-seq sequences and the total number of input sequences.
+\end{itemize}
+
+The \texttt{enrichment} of STARR-seq over input coverage is then calculated as follows:
+\[
+\frac{\quad\frac{\textnormal{STARR-seq coverage of peak}}{\textnormal{total number of STARR-seq sequences}}\quad}
+{\frac{\textnormal{input coverage of peak}}{\textnormal{total number of input sequences}}}
+\]
+The numinator and denuminator are corrected conservatively to the bounds of the 0.95 binomial confidence inverval corresponding to model 1.
+
+\section*{References}
+\begin{enumerate}
+    \item \emph{Genome-Wide Quantitative Enhancer Activity Maps Identified by STARR-seq} Arnold et al. Science. 2013 Mar 1;339(6123):1074-7. doi: 10.1126/science.1232542. Epub 2013 Jan 17.
+    \item \emph{STARR-seq - Principles and Applications} Felix Muerdter, Lukasz M. Boryn, Cosmas D. Arnold. 2015 Sep;106(3):145-50. doi: 10.1016/j.ygeno.2015.06.001. Epub 2015 Jun 11.
+\end{enumerate}
+\section{Session Information}
+<<echo=FALSE>>=
+sessionInfo()
+@
+\end{document}

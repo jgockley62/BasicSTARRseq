@@ -1,0 +1,10 @@
+
+exportPattern("getPeaks", "STARRseqData", "sample", "control")
+
+import('GenomicRanges', 'GenomicAlignments', 'S4Vectors', 'methods', 'IRanges','GenomeInfoDb')
+importFrom(stats, prop.test)
+
+exportClasses(STARRseqData)
+
+exportMethods(getPeaks, sample, 'sample<-', control, 'control<-')
+
